@@ -1,0 +1,154 @@
+---
+title: "STATS 485 Paper 3 Appendix Verison 2"
+author: "Emmalyn Campau"
+date: "2023-12-10"
+output:
+  pdf_document: default
+  word_document: default
+---
+This file contains code used to perform an analysis that sought to objectively rank NCAA Division 1A football teams using their season records and home field advantage. First, a Bradley-Terry model was constructed using GLM. Then the model was adjusted to include home field advantage. Next, a penalized version of these models was analyzed using Bayesian GLM. All of the models were compared statistically using AIC and 10-fold cross validation. The ranking created by the models with home team advantage were compared to the College Football Playoff committee's ranking. Finally, teams in the Big Ten were investigated and a two-sided adjusted t-test was used to determine the significance of the coefficients created by the B-T models.
+
+# Download libraries
+``` {r libraries}
+library(dplyr)
+library(multcomp)
+library(rcompanion)
+library(boot)
+library(arm)
+```
+
+# Download the data
+```{r data}
+football <- read.csv('https://dept.stat.lsa.umich.edu/~bbh/s485/data/cfb_wl-2023-11-26.csv')
+```
+
+# Part A: Create a Bradley-Terry model
+a.
+``` {r partA}
+# set seed
+set.seed(123)
+
+# Create a Bradley Terry model
+bt_football <- glm(home_win ~ .-1, data = football, family = binomial)
+# Extract team strength measures (Michigan State not included, so point out that this was automatically used as the reference)
+coef(bt_football)
+#sort(coef(bt_football))
+```
+
+# Part B: create a B-T model that includes home field advantage
+b.
+``` {r partB}
+# Create a Bradley Terry model
+bt_football_adv <- glm(home_win ~ .-Michigan.State, data = football, family = binomial)
+# Extract team strength measures
+coef(bt_football_adv)
+
+# compare
+summary(bt_football)$aic
+summary(bt_football_adv)$aic
+```
+
+# Create a penalized B-T model using Bayesian GLM
+## 10-Fold Cross validation and AIC
+c.
+``` {r partC}
+# Set seed
+set.seed(1549)
+
+# Penalized model without home field advantage
+bt_bayes <- arm::bayesglm(home_win ~ .-1-Michigan.State, data = football, family = binomial)
+coef(bt_bayes)
+# Penalized model with home field advantage
+bt_bayes_adv <- arm::bayesglm(home_win ~ .-Michigan.State, data = football, family = binomial)
+coef(bt_bayes_adv)
+
+# Report statistics, such as AIC
+summary(bt_bayes)$aic
+summary(bt_bayes_adv)$aic
+
+# Cross validation with 10 folds
+# for glm
+cv_glm <- cv.glm(football, bt_football, K=10)
+(cv_glm$delta)[1]
+cv_glm_adv <- cv.glm(football, bt_football_adv, K=10)
+(cv_glm_adv$delta)[1]
+
+# for bayesglm
+cv_bayes <- cv.glm(football, bt_bayes, K=10)
+(cv_bayes$delta)[1]
+cv_bayes_adv <- cv.glm(football, bt_bayes_adv, K=10)
+(cv_bayes_adv$delta)[1]
+```
+
+# Create lists of top 25 teams
+d.
+``` {r partD}
+# Top 25 teams
+# GLM with advantage
+coef_list_glm <- coef(bt_football_adv)
+coef_list_glm <- sort(coef_list_glm, decreasing = TRUE)
+# print names
+names(coef_list_glm)[1:25]
+print("Top 25 Teams Using GLM")
+# names and coefficients
+head(coef_list_glm, 25)
+
+# Bayes with advantage
+coef_list_bayes <- coef(bt_bayes_adv)
+coef_list_bayes <- sort(coef_list_bayes, decreasing = TRUE)
+# print names
+names(coef_list_bayes)[1:25]
+print("Top 25 Teams Using BayesGLM")
+# names and coefficients
+head(coef_list_bayes, 25)
+
+# Print differences
+setdiff(names(coef_list_bayes)[1:25], names(coef_list_glm)[1:25])
+
+# Store the CFP's ranking in 'actual'
+actual <- c('Georgia', 'Michigan', 'Washington', 'Florida.State', 'Oregon', 'Ohio.State',
+            'Texas', 'Alabama', 'Missouri', 'Penn.State', 'Ole.Miss', 'Oklahoma', 'LSU', 
+            'Louisville', 'Arizona', 'Iowa', 'Notre.Dame', 'Oklahoma.State', 'NC.State',
+            'Oregon.State', 'Tennessee', 'Tulane', 'Clemson', 'Liberty', 'Kansas.State')
+
+# Compare actual to Bayes GLM ranking
+setdiff(actual, names(coef_list_bayes)[1:25])
+```
+
+# Peer comparison of Big Ten teams
+e.
+``` {r partE}
+# Preferred model uses Bayesian GLM and includes home field advantage. 
+# Michigan State as the reference for consistency because I used them above
+big_ten <- bayesglm(home_win ~ ., data=football, family=binomial())
+# Save coefficients of Big Ten teams
+mich <- coef(big_ten)[c('Michigan')]
+mich
+msu <- coef(big_ten)[c('Michigan.State')]
+msu
+psu <- coef(big_ten)[c('Penn.State')]
+psu
+osu <- coef(big_ten)[c('Ohio.State')]
+osu
+
+#Bonferroni means that alpha is divided by the number of tests
+alpha_bonferroni <- 0.05/3
+
+# Using Michigan as my favorite team. Comparing to OSU, Michigan State, and Penn State using t-test
+glht(big_ten, linfct = c("Michigan - Ohio.State == 0")) %>% summary()
+# 0.492
+glht(big_ten, linfct = c("Michigan - 0 == 0")) %>% summary()
+# 0.02
+glht(big_ten, linfct = c("Michigan - Penn.State == 0")) %>% summary()
+# 0.261
+
+```
+
+
+
+
+
+
+
+
+
