@@ -1,4 +1,4 @@
 # College-Football-Playoff-Predictions
-This is a project I completed for my Data Science Capstone course at the University of Michigan, which performs advanced statistical analysis on data from the NCAA College Football 2023 season.
+This is a project I completed for my Data Science Capstone course at the University of Michigan, which performs advanced statistical analysis on data from the NCAA College Football 2023 season using R.
 
 I used Bradley-Terry models, such as GLMs, to statistically rank teams at the end of the football season and compare these rankings to the official results determined by the committee. The goal was to show how the official ranking may have differed from a non-biased statistical approach. The dataset, which was scraped from CBS Sports, includes a row for each contest through Week 13 and a column for each NCAA Division 1A team. Entries in a team’s column show 0 for games in which the team did not play, 1 for games which the team won, and -1 for games which the team lost. There is also a column to indicate whether the winner was the home team, which was later used to account for home field advantage.
